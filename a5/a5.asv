@@ -1,0 +1,37 @@
+clear; clc;
+
+load('Assignment_5_data.mat')
+
+fis = readfis('fis.fis');
+
+X1smooth = smooth(X1, 11);
+X2smooth = smooth(X2, 11);
+X3smooth = smooth(X3, 11);
+
+% Compute noise profiles
+NoiseX1 = X1 - X1smooth;
+NoiseX2 = X2 - X2smooth;
+NoiseX3 = X3 - X3smooth;
+
+% Compute standard deviation of noise for required windows
+STD_Noise_X1_201_300 = std(NoiseX1(1,201:300));
+STD_Noise_X2_201_300 = std(NoiseX2(1,201:300));
+STD_Noise_X3_201_300 = std(NoiseX3(1,201:300));
+
+STD_Noise_X1_801_900 = std(NoiseX1(1,801:900));
+STD_Noise_X2_801_900 = std(NoiseX2(1,801:900));
+STD_Noise_X3_801_900 = std(NoiseX3(1,801:900));
+
+% Display results for manual input into the FIS Rule Viewer
+fprintf('\n--- Standard Deviations (Input to FIS) ---\n');
+fprintf('For window 201-300:\n');
+fprintf('  STD_Noise_X1: %.6f\n', STD_Noise_X1_201_300);
+fprintf('  STD_Noise_X2: %.6f\n', STD_Noise_X2_201_300);
+fprintf('  STD_Noise_X3: %.6f\n', STD_Noise_X3_201_300);
+
+fprintf('[%.6f %.6f %.6f')
+
+fprintf('\nFor window 801-900:\n');
+fprintf('  STD_Noise_X1: %.6f\n', STD_Noise_X1_801_900);
+fprintf('  STD_Noise_X2: %.6f\n', STD_Noise_X2_801_900);
+fprintf('  STD_Noise_X3: %.6f\n', STD_Noise_X3_801_900);
