@@ -8,11 +8,13 @@ class EKF:
         self.x = x
         self.dt = dt
         self.Vc = Vc
-        self.prob = None
+        self.K = None
 
-    def predict(self, u, prob):
+    def predict(self, u, event_str, prob):
+        if event_str == "usual stuff":
+            prob = 1
+
         # Adaptive Q
-        self.prob = prob
         Q = self.Q.copy()
         Q = Q * prob
 
@@ -21,16 +23,19 @@ class EKF:
         self.H = self.jacobian_H()         # Measurement Jacobian (constant for h(x) = [x, y, z, phi])
         self.P = self.A @ self.P @ self.A.T + Q  # Covariance prediction
 
-    def update(self, z):
+    def update(self, z, event_str, prob):
+        if event_str == "usual stuff":
+            prob = 1
+        
         # Adaptive R
         meas_norm = np.linalg.norm(z)
         R = self.R.copy()
-        R = R * meas_norm / self.prob  # Adjust measurement noise covariance based on measurement norm
+        R = R * meas_norm / prob  # Adjust measurement noise covariance based on measurement norm
         
-        K = self.P @ self.H.T @ np.linalg.inv(self.H @ self.P @ self.H.T + R)  # Kalman gain
-        self.x = self.x + K @ (z - self.measurement_model())                        # State update
+        self.K = self.P @ self.H.T @ np.linalg.inv(self.H @ self.P @ self.H.T + R)  # Kalman gain
+        self.x = self.x + self.K @ (z - self.measurement_model())                        # State update
         I = np.eye(self.A.shape[0])
-        self.P = (I - K @ self.H) @ self.P @ (I - K @ self.H).T + K @ R @ K.T  # Covariance update
+        self.P = (I - self.K @ self.H) @ self.P @ (I - self.K @ self.H).T + self.K @ R @ self.K.T  # Covariance update
 
     def motion_model(self, u):
         dt = self.dt

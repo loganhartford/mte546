@@ -8,6 +8,7 @@ class EKF:
         self.x = x
         self.dt = dt
         self.Vc = Vc
+        self.K = None
 
     def predict(self, u):
         self.A = self.jacobian_A(u)       # Compute state transition Jacobian
@@ -16,10 +17,10 @@ class EKF:
         self.P = self.A @ self.P @ self.A.T + self.Q  # Covariance prediction
 
     def update(self, z):
-        K = self.P @ self.H.T @ np.linalg.inv(self.H @ self.P @ self.H.T + self.R)  # Kalman gain
-        self.x = self.x + K @ (z - self.measurement_model())                        # State update
+        self.K = self.P @ self.H.T @ np.linalg.inv(self.H @ self.P @ self.H.T + self.R)  # Kalman gain
+        self.x = self.x + self.K @ (z - self.measurement_model())                        # State update
         I = np.eye(self.A.shape[0])
-        self.P = (I - K @ self.H) @ self.P @ (I - K @ self.H).T + K @ self.R @ K.T  # Covariance update
+        self.P = (I - self.K @ self.H) @ self.P @ (I - self.K @ self.H).T + self.K @ self.R @ self.K.T  # Covariance update
 
     def motion_model(self, u):
         dt = self.dt

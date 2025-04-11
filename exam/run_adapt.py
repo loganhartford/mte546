@@ -1,14 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
-from ekf import EKF
+from adaptive_ekf import EKF
 
-def run_ekf(u, z, x_truc):
+def run_adaptive_ekf(u, z, x_truc):
     Q = np.diag([1.0, 1.0, 2.5, 0.5, 0.5, 0.5, 0.5])
     R = np.diag([500.0, 500.0, 500.0, 1.0])
-
-    # Q = np.diag([1.0, 1.0, 2.5, 0.5, 0.5, 5.0, 5.0])
-    # R = np.diag([5000.0, 5000.0, 5000.0, 100.0])
 
     P0 = Q.copy()
 
@@ -28,30 +26,34 @@ def run_ekf(u, z, x_truc):
 
     N = 100
     x_est_store = np.zeros((N, 7), dtype=float)
+    kalman_gains = []
+    estimation_errors = []
     prob = 1
-
     for i in range(1, N):
-        u_i = u.iloc[i].values.astype(float)
-        z_i = z.iloc[i].values.astype(float)
-        meas_norm = np.linalg.norm(z_i)
-        
         current_event = event.iloc[i, 0].strip().lower()
         if current_event != "usual stuff":
-            print(i, current_event, event_p.iloc[i, 0])
             prob = event_p.iloc[i, 0]
         else:
             prob = 1
         
-        R_new = R * meas_norm / prob
-        Q_new = Q * prob
-        ekf.R = R_new
-        ekf.Q = Q_new
+        u_i = u.iloc[i].values.astype(float)
+        ekf.predict(u_i, prob)
+        z_i = z.iloc[i].values.astype(float)
+        ekf.update(z_i, prob)
 
-        ekf.predict(u_i)
-        ekf.update(z_i)
+        kalman_gains.append(ekf.K)
+        estimation_errors.append(x_truc.iloc[i].values - ekf.get_state())
+
         x_est_store[i, :] = ekf.get_state()
-    
-    # Print RMSE error for each state
+
+    kalman_gains = np.array(kalman_gains).reshape(99, -1)
+    print(kalman_gains[0])
+    kalman_gains_df = pd.DataFrame(kalman_gains)
+    kalman_gains_df.to_csv("kalman_gains_ekf2.csv", index=False)
+
+    estimation_errors_df = pd.DataFrame(estimation_errors, columns=["x", "y", "z", "v", "roll", "pitch", "yaw"])
+    estimation_errors_df.to_csv("state_estimation_errors_ekf2.csv", index=False)
+
     rmse = np.sqrt(np.mean((x_est_store - x_truc.iloc[:100, :].values)**2, axis=0))
     print("RMSE error for each state:")
     print("x, y, z, v, roll, pitch, yaw")
@@ -61,7 +63,6 @@ def run_ekf(u, z, x_truc):
 
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(15, 10), sharex=True)
     
-    # Position plots (x, y, z)
     axs[0, 0].plot(t_100, x_est_store[:, 0], 'r-', label='EKF estimate')
     axs[0, 0].plot(t_100, x_truc.iloc[:100, 0], 'k--', label='Actual')
     axs[0, 0].set_ylabel('x (m)')
@@ -81,7 +82,6 @@ def run_ekf(u, z, x_truc):
     axs[0, 2].set_title('Position Z')
     axs[0, 2].grid(True)
 
-    # Orientation plots (roll, pitch, yaw)
     angles = ['roll', 'pitch', 'yaw']
     for i, label in enumerate(angles):
         axs[1, i].plot(t_100, x_est_store[:, 4 + i], 'r-', label='EKF estimate')
@@ -98,7 +98,6 @@ def run_ekf(u, z, x_truc):
     plt.savefig('pos_orien_2.png')
     plt.show()
 
-    # Velocity plot
     fig2, ax2 = plt.subplots(figsize=(8, 4))
     ax2.plot(t_100, x_est_store[:, 3], 'r-', label='EKF estimate')
     ax2.plot(t_100, x_truc.iloc[:100, 3], 'k--', label='Actual')
@@ -112,7 +111,6 @@ def run_ekf(u, z, x_truc):
 
 
 if __name__ == "__main__":
-    import pandas as pd
     from scipy.io import loadmat
 
     data = loadmat("Heart_of_Gold_Improp_drive/Heart_of_Gold_Improp_drive.mat")
@@ -136,12 +134,5 @@ if __name__ == "__main__":
 
     event_p = pd.DataFrame(event_p).T
     event_p.columns = ["event_probability"]
-
-    # print(event.iloc[72:80])
-    # print(u.iloc[72:90])
-    # print(z.iloc[72:80])
-    # print(x_truc.iloc[72:80])
-    # print(event_p.iloc[72:80])
-
 
     run_ekf(u, z, x_truc)
