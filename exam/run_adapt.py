@@ -40,8 +40,7 @@ def run_ekf(u, z, x_truc):
             print(i, current_event, event_p.iloc[i, 0])
             prob = event_p.iloc[i, 0]
         else:
-            event_scale = 1.0
-        prob = event_p.iloc[i, 0]
+            prob = 1
         
         R_new = R * meas_norm / prob
         Q_new = Q * prob
