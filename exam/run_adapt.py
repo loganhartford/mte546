@@ -28,11 +28,27 @@ def run_ekf(u, z, x_truc):
 
     N = 100
     x_est_store = np.zeros((N, 7), dtype=float)
+    prob = 1
 
     for i in range(1, N):
         u_i = u.iloc[i].values.astype(float)
-        ekf.predict(u_i)
         z_i = z.iloc[i].values.astype(float)
+        meas_norm = np.linalg.norm(z_i)
+        
+        current_event = event.iloc[i, 0].strip().lower()
+        if current_event != "usual stuff":
+            print(i, current_event, event_p.iloc[i, 0])
+            prob = event_p.iloc[i, 0]
+        else:
+            event_scale = 1.0
+        prob = event_p.iloc[i, 0]
+        
+        R_new = R * meas_norm / prob
+        Q_new = Q * prob
+        ekf.R = R_new
+        ekf.Q = Q_new
+
+        ekf.predict(u_i)
         ekf.update(z_i)
         x_est_store[i, :] = ekf.get_state()
     
@@ -122,11 +138,11 @@ if __name__ == "__main__":
     event_p = pd.DataFrame(event_p).T
     event_p.columns = ["event_probability"]
 
-    print(event.iloc[72:80])
-    print(u.iloc[72:90])
-    print(z.iloc[72:80])
-    print(x_truc.iloc[72:80])
-    print(event_p.iloc[72:80])
+    # print(event.iloc[72:80])
+    # print(u.iloc[72:90])
+    # print(z.iloc[72:80])
+    # print(x_truc.iloc[72:80])
+    # print(event_p.iloc[72:80])
 
 
     run_ekf(u, z, x_truc)
