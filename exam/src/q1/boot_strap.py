@@ -11,6 +11,7 @@ inhouse = pd.read_csv("regression_data/inhouse_sensor21.csv")
 client21 = pd.read_csv("regression_data/client_sensor21.csv")
 client22 = pd.read_csv("regression_data/client_sensor22.csv")
 
+# Analytical model
 def compute_desired(q1, q2):
     return -0.0081 * q1 + 0.0589 * q2 - 0.000625
 
@@ -27,6 +28,7 @@ coefficients = []
 X_full = combined[['v1', 'v2']].values
 y_full = combined['desired'].values
 
+# Linear regression model
 for _ in range(n_iter):
     indices = np.random.choice(len(X_full), size=n_samples, replace=True)
     X_sample = X_full[indices]
@@ -37,6 +39,7 @@ for _ in range(n_iter):
 
 coefficients = np.array(coefficients)
 
+# Plot histograms of coefficients
 plt.figure(figsize=(12, 4))
 labels = ['v1 coefficient', 'v2 coefficient', 'intercept']
 for i in range(3):
@@ -48,6 +51,7 @@ for i in range(3):
 plt.tight_layout()
 plt.savefig("bootstrap_histograms.png")
 
+# Calculate Mahalanobis distance
 mean_coeff = np.mean(coefficients, axis=0)
 cov_coeff = np.cov(coefficients.T)
 

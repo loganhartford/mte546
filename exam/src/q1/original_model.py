@@ -5,9 +5,11 @@ import numpy as np
 inhouse = pd.read_csv("regression_data/inhouse_sensor21.csv")
 client = pd.read_csv("regression_data/client_sensor21.csv")
 
+# Analytical model
 def desired_output(q1, q2):
     return -0.0081 * q1 + 0.0589 * q2 - 0.000625
 
+# Original model
 def estimated_output(q1, q2):
     return 0.017 * q1 + 0.042 * q2 + 0.0015
 

@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
+# Load and parse data
 base_path = 'Neural_network_data2'
 train = pd.read_csv(os.path.join(base_path, 'train.csv'))
 val = pd.read_csv(os.path.join(base_path, 'validation.csv'))
@@ -28,6 +29,7 @@ y_val = to_categorical(val['label'].values)
 y_train_labels = train['label'].values
 y_val_labels = val['label'].values
 
+# Preprocess data
 scaler_b = StandardScaler()
 X_train_bearing = scaler_b.fit_transform(X_train_bearing)
 X_val_bearing = scaler_b.transform(X_val_bearing)
@@ -36,6 +38,8 @@ scaler_n = StandardScaler()
 X_train_nacelle = scaler_n.fit_transform(X_train_nacelle)
 X_val_nacelle = scaler_n.transform(X_val_nacelle)
 
+
+# Model architecture
 def build_model(input_dim):
     model = Sequential()
     model.add(Dense(16, activation='relu', input_shape=(input_dim,)))
@@ -48,19 +52,7 @@ def build_model(input_dim):
                   metrics=['accuracy'])
     return model
 
-def build_deep_model(input_dim):
-    model = Sequential()
-    model.add(Dense(64, activation='relu', input_shape=(input_dim,)))
-    model.add(Dropout(0.3))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dropout(0.3))
-    model.add(Dense(16, activation='relu'))
-    model.add(Dense(2, activation='softmax'))
-    model.compile(optimizer=Adam(learning_rate=0.001),
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
-    return model
-
+# Callback for metrics
 class LateFusionPredictionLogger(Callback):
     def __init__(self):
         self.train_preds = []
@@ -76,6 +68,7 @@ class LateFusionPredictionLogger(Callback):
         self.train_preds.append(self.model.predict(self.X_train, verbose=0))
         self.val_preds.append(self.model.predict(self.X_val, verbose=0))
 
+# Late Fusion training
 early_stopping = EarlyStopping(monitor='val_accuracy', patience=20, restore_best_weights=True)
 
 logger_nacelle = LateFusionPredictionLogger(X_train_nacelle, X_val_nacelle)
@@ -97,11 +90,14 @@ history_bearing = model_bearing.fit(X_train_bearing, y_train,
 X_train_fused = np.hstack((X_train_nacelle, X_train_bearing))
 X_val_fused = np.hstack((X_val_nacelle, X_val_bearing))
 
-model_fusion = build_deep_model(X_train_fused.shape[1])
+# Early Fusion training
+model_fusion = build_model(X_train_fused.shape[1])
 history_fusion = model_fusion.fit(X_train_fused, y_train,
                                   validation_data=(X_val_fused, y_val),
                                   epochs=200, batch_size=128, verbose=0,
                                   callbacks=[early_stopping])
+
+# Compute metrics and plotting
 
 def compute_late_fusion_accuracies(train_preds1, train_preds2, y_train_labels,
                                    val_preds1, val_preds2, y_val_labels):
@@ -177,12 +173,14 @@ def plot_confusion_matrices_side_by_side(cm1, title1, cm2, title2, filename):
     axes[0].set_title(title1)
     axes[0].set_xlabel('Predicted')
     axes[0].set_ylabel('True')
+    
     sns.heatmap(cm2, annot=True, fmt='d', cmap='Blues',
                 xticklabels=['Healthy', 'Faulty'],
                 yticklabels=['Healthy', 'Faulty'], ax=axes[1])
     axes[1].set_title(title2)
     axes[1].set_xlabel('Predicted')
     axes[1].set_ylabel('True')
+    
     plt.tight_layout()
     os.makedirs('img/q3', exist_ok=True)
     plt.savefig(f'img/q3/{filename}')
@@ -194,6 +192,7 @@ plot_confusion_matrices_side_by_side(
     'fusion_confusion_matrices.png'
 )
 
+# Test predictions
 test = pd.read_csv(os.path.join(base_path, 'test.csv'))
 
 X_test_bearing = scaler_b.transform(test[bearing_cols].values)

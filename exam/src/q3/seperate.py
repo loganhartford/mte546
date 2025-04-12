@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
+# Load and parse data
 base_path = 'Neural_network_data2'
 train = pd.read_csv(os.path.join(base_path, 'train.csv'))
 val = pd.read_csv(os.path.join(base_path, 'validation.csv'))
@@ -28,6 +29,7 @@ y_train = to_categorical(train['label'].values)
 y_val = to_categorical(val['label'].values)
 y_val_labels = np.argmax(y_val, axis=1)
 
+# Preprocess data
 scaler_b = StandardScaler()
 X_train_bearing = scaler_b.fit_transform(X_train_bearing)
 X_val_bearing = scaler_b.transform(X_val_bearing)
@@ -36,6 +38,7 @@ scaler_n = StandardScaler()
 X_train_nacelle = scaler_n.fit_transform(X_train_nacelle)
 X_val_nacelle = scaler_n.transform(X_val_nacelle)
 
+# Model architecture
 def build_model(input_dim):
     model = Sequential()
     model.add(Dense(16, activation='relu', input_shape=(input_dim,)))
@@ -48,6 +51,7 @@ def build_model(input_dim):
                   metrics=['accuracy'])
     return model
 
+# Train models
 early_stopping = EarlyStopping(monitor='val_accuracy', patience=20, restore_best_weights=True)
 
 model_nacelle = build_model(X_train_nacelle.shape[1])
@@ -59,6 +63,8 @@ model_bearing = build_model(X_train_bearing.shape[1])
 history_bearing = model_bearing.fit(X_train_bearing, y_train,
                                     validation_data=(X_val_bearing, y_val),
                                     epochs=200, batch_size=128, verbose=0, callbacks=[early_stopping])
+
+# Plotting and statistics
 
 def plot_learning_curves_side_by_side(history1, title1, history2, title2):
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -111,12 +117,14 @@ def plot_confusion_matrices_side_by_side(cm1, title1, cm2, title2, filename):
     axes[0].set_title(title1)
     axes[0].set_xlabel('Predicted')
     axes[0].set_ylabel('True')
+    
     sns.heatmap(cm2, annot=True, fmt='d', cmap='Blues',
                 xticklabels=['Healthy', 'Faulty'],
                 yticklabels=['Healthy', 'Faulty'], ax=axes[1])
     axes[1].set_title(title2)
     axes[1].set_xlabel('Predicted')
     axes[1].set_ylabel('True')
+    
     plt.tight_layout()
     os.makedirs('img/q3', exist_ok=True)
     plt.savefig(f'img/q3/{filename}')
