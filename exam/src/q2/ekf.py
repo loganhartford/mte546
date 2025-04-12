@@ -11,39 +11,44 @@ class EKF:
         self.K = None
 
     def predict(self, u):
-        self.A = self.jacobian_A(u)       # Compute state transition Jacobian
-        self.motion_model(u)              # Predict state using motion model
-        self.H = self.jacobian_H()         # Measurement Jacobian (constant for h(x) = [x, y, z, phi])
-        self.P = self.A @ self.P @ self.A.T + self.Q  # Covariance prediction
+        self.A = self.jacobian_A(u)  # Compute state transition Jacobian
+        self.motion_model(u)        # Predict state using motion model
+        self.H = self.jacobian_H()  # Measurement Jacobian
+        self.P = self.A @ self.P @ self.A.T + self.Q  # Prediction covariance
 
     def update(self, z):
-        self.K = self.P @ self.H.T @ np.linalg.inv(self.H @ self.P @ self.H.T + self.R)  # Kalman gain
-        self.x = self.x + self.K @ (z - self.measurement_model())                        # State update
+        self.K = self.P @ self.H.T @ np.linalg.inv(
+            self.H @ self.P @ self.H.T + self.R
+        )  # Kalman gain
+        self.x = self.x + self.K @ (z - self.measurement_model())  # State update
         I = np.eye(self.A.shape[0])
-        self.P = (I - self.K @ self.H) @ self.P @ (I - self.K @ self.H).T + self.K @ self.R @ self.K.T  # Covariance update
+        self.P = (I - self.K @ self.H) @ self.P @ (I - self.K @ self.H).T + \
+                 self.K @ self.R @ self.K.T  # Covariance update
 
     def motion_model(self, u):
         dt = self.dt
         a, wx, wy, wz = u
         x, y, z, v, phi, theta, psi = self.x
-        
+
         R_mat = self.rotation_matrix(phi, theta, psi)
         D = v * dt + 0.5 * a * dt**2
-        
+
         # Position
         pos_update = R_mat[:, 0] * D
         x_new = x + pos_update[0]
         y_new = y + pos_update[1]
         z_new = z + pos_update[2]
-        
+
         # Velocity
         v_new = v + a / np.sqrt(1 - (v / self.Vc)**2)
-        
+
         # Orientation update using the provided Jacobian J:
-        phi_new = phi + wx + np.sin(phi) * np.tan(theta) * wy + np.cos(phi) * np.tan(theta) * wz
+        phi_new = phi + wx + np.sin(phi) * np.tan(theta) * wy + \
+                  np.cos(phi) * np.tan(theta) * wz
         theta_new = theta + np.cos(phi) * wy - np.sin(phi) * wz
-        psi_new = psi + (np.sin(phi) / np.cos(theta)) * wy + (np.cos(phi) / np.cos(theta)) * wz
-        
+        psi_new = psi + (np.sin(phi) / np.cos(theta)) * wy + \
+                  (np.cos(phi) / np.cos(theta)) * wz
+
         self.x = np.array([x_new, y_new, z_new, v_new, phi_new, theta_new, psi_new])
 
     def rotation_matrix(self, phi, theta, psi):
@@ -53,11 +58,13 @@ class EKF:
         stheta = np.sin(theta)
         cpsi = np.cos(psi)
         spsi = np.sin(psi)
-        
+
         R = np.array([
-            [cphi * ctheta,      cphi * stheta * spsi - sphi * cpsi,    cphi * stheta * cpsi + sphi * spsi],
-            [sphi * ctheta,      sphi * stheta * spsi + cphi * cpsi,     sphi * stheta * cpsi - cphi * spsi],
-            [-stheta,             ctheta * spsi,           ctheta * cpsi]
+            [cphi * ctheta, cphi * stheta * spsi - sphi * cpsi,
+             cphi * stheta * cpsi + sphi * spsi],
+            [sphi * ctheta, sphi * stheta * spsi + cphi * cpsi,
+             sphi * stheta * cpsi - cphi * spsi],
+            [-stheta, ctheta * spsi, ctheta * cpsi]
         ])
         return R
 
@@ -68,9 +75,9 @@ class EKF:
         D = v * dt + 0.5 * a * dt**2
         Vc = self.Vc
 
-        A = np.zeros((7,7))
+        A = np.zeros((7, 7))
 
-        # Posistion
+        # Position
         # x
         A[0, 0] = 1
         A[0, 3] = dt * np.cos(phi) * np.cos(theta)
@@ -85,7 +92,7 @@ class EKF:
 
         # z
         A[2, 2] = 1
-        A[2, 3] = - dt * np.sin(theta)
+        A[2, 3] = -dt * np.sin(theta)
         A[2, 4] = 0
         A[2, 5] = -np.cos(theta) * D
 
@@ -94,16 +101,20 @@ class EKF:
 
         # Orientation
         # phi
-        A[4, 4] = 1 + np.cos(phi) * np.tan(theta) * wy - np.sin(phi) * np.tan(theta) * wz
-        A[4, 5] = (np.sin(phi) / (np.cos(theta)**2)) * wy + (np.cos(phi) / (np.cos(theta)**2)) * wz
+        A[4, 4] = 1 + np.cos(phi) * np.tan(theta) * wy - \
+                  np.sin(phi) * np.tan(theta) * wz
+        A[4, 5] = (np.sin(phi) / (np.cos(theta)**2)) * wy + \
+                  (np.cos(phi) / (np.cos(theta)**2)) * wz
 
         # theta
         A[5, 4] = -np.sin(phi) * wy - np.cos(phi) * wz
         A[5, 5] = 1
 
         # psi
-        A[6, 4] = (np.cos(phi) / np.cos(theta)) * wy - (np.sin(phi) / np.cos(theta)) * wz
-        A[6, 5] = (np.sin(phi) * np.sin(theta) / (np.cos(theta)**2)) * wy + (np.cos(phi) * np.sin(theta) / (np.cos(theta)**2)) * wz
+        A[6, 4] = (np.cos(phi) / np.cos(theta)) * wy - \
+                  (np.sin(phi) / np.cos(theta)) * wz
+        A[6, 5] = (np.sin(phi) * np.sin(theta) / (np.cos(theta)**2)) * wy + \
+                  (np.cos(phi) * np.sin(theta) / (np.cos(theta)**2)) * wz
         A[6, 6] = 1
 
         return A
@@ -119,6 +130,6 @@ class EKF:
     def measurement_model(self):
         x, y, z, v, phi, theta, psi = self.x
         return np.array([x, y, z, phi])
-    
+
     def get_state(self):
         return self.x
